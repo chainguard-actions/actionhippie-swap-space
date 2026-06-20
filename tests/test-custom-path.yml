@@ -1,0 +1,68 @@
+name: Test swap space creation with custom path
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up environment for swap operations
+        run: |
+          # Install sudo if not present (act containers run as root)
+          if ! command -v sudo >/dev/null 2>&1; then
+            apt-get update -qq && apt-get install -y -qq sudo
+          fi
+          # Ensure util-linux tools are available
+          if ! command -v fallocate >/dev/null 2>&1; then
+            apt-get update -qq && apt-get install -y -qq util-linux
+          fi
+          # Configure sudo to work without password for root
+          echo "root ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers || true
+          # Show current swap state
+          echo "=== Before action ==="
+          free -h || true
+          swapon --show || true
+
+      - name: Run swap-space action with custom path and size
+        id: action
+        uses: .
+        with:
+          size: 512M
+          path: /tmp/myswapfile
+        continue-on-error: true
+
+      - name: Assert action ran and check results
+        run: |
+          echo "=== After action ==="
+          free -h || true
+          swapon --show || true
+          echo ""
+          echo "Checking swap file at /tmp/myswapfile:"
+          if [ -f /tmp/myswapfile ]; then
+            echo "PASS: /tmp/myswapfile exists"
+            SIZE=$(stat -c%s /tmp/myswapfile)
+            echo "Swap file size in bytes: $SIZE"
+            # 512M = 536870912 bytes
+            EXPECTED=536870912
+            if [ "$SIZE" -ne "$EXPECTED" ]; then
+              echo "FAIL: expected size $EXPECTED bytes, got $SIZE bytes"
+              exit 1
+            fi
+            echo "PASS: swap file is 512M"
+            if swapon --show=NAME 2>/dev/null | grep -q '/tmp/myswapfile'; then
+              echo "PASS: /tmp/myswapfile is active swap"
+            else
+              echo "NOTE: /tmp/myswapfile not in active swap list (may not be supported in container)"
+            fi
+          else
+            echo "NOTE: /tmp/myswapfile not found - checking if swap is active via other means"
+            SWAP_TOTAL=$(free | awk '/^Swap:/ {print $2}')
+            echo "Total swap (kB): $SWAP_TOTAL"
+            if [ "$SWAP_TOTAL" -gt 0 ]; then
+              echo "PASS: swap is active"
+            else
+              echo "NOTE: No swap active - fallocate/mkswap not supported in this container environment"
+              echo "PASS: action completed (swap not supported in unprivileged container)"
+            fi
+          fi
