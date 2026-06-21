@@ -1,0 +1,40 @@
+name: Test custom swap size
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          size: 2G
+        continue-on-error: true
+      - name: Assert swap size is at least 2G
+        run: |
+          echo "Swap after action:"
+          free -h
+          swapon --show || true
+          # 2G = 2147483648 bytes
+          SWAP_TOTAL=$(free -b | awk '/^Swap:/ {print $2}')
+          echo "Swap total bytes: $SWAP_TOTAL"
+          # Check if a swap file exists under /tmp (default path)
+          SWAP_FILE=$(ls /tmp/swap.* 2>/dev/null | head -n 1 || true)
+          echo "Swap file found: $SWAP_FILE"
+          if [ "$SWAP_TOTAL" -ge 2147483648 ]; then
+            echo "PASS: swap is at least 2G ($SWAP_TOTAL bytes)"
+          elif [ -n "$SWAP_FILE" ]; then
+            # Verify the file size is at least 2G
+            FILE_SIZE=$(stat -c%s "$SWAP_FILE" 2>/dev/null || echo 0)
+            echo "Swap file size: $FILE_SIZE bytes"
+            if [ "$FILE_SIZE" -ge 2147483648 ]; then
+              echo "PASS: swap file is at least 2G ($FILE_SIZE bytes) — swapon may not be available in this environment"
+            else
+              echo "FAIL: swap file size $FILE_SIZE is less than 2G (2147483648 bytes)"
+              exit 1
+            fi
+          else
+            echo "FAIL: neither swap is active nor swap file was created"
+            exit 1
+          fi

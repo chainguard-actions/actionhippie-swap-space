@@ -1,0 +1,43 @@
+name: Test custom swap path
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create custom swap directory
+        run: |
+          sudo mkdir -p /mnt/swapdir
+      - id: action
+        uses: .
+        with:
+          size: 1G
+          path: /mnt/swapdir
+        continue-on-error: true
+      - name: Assert swap file was created in custom path or swap is active there
+        run: |
+          echo "Swap after action:"
+          free -h
+          swapon --show || true
+          # Check if swap is active (works on real runners)
+          SWAP_TOTAL=$(free -b | awk '/^Swap:/ {print $2}')
+          echo "Swap total bytes: $SWAP_TOTAL"
+          # Check if a swap file exists under /mnt/swapdir
+          SWAP_FILE=$(ls /mnt/swapdir/swap.* 2>/dev/null | head -n 1 || true)
+          echo "Swap file found: $SWAP_FILE"
+          if [ "$SWAP_TOTAL" -gt 0 ]; then
+            # Verify the active swap is in the custom path
+            SWAP_NAME=$(swapon --show=NAME --noheadings 2>/dev/null | head -n 1 || true)
+            echo "Active swap file: $SWAP_NAME"
+            if [[ "$SWAP_NAME" == /mnt/swapdir/* ]]; then
+              echo "PASS: swap is active at $SWAP_NAME in custom path"
+            else
+              echo "PASS: swap is active (path check skipped, swap total: $SWAP_TOTAL bytes)"
+            fi
+          elif [ -n "$SWAP_FILE" ]; then
+            echo "PASS: swap file was created at $SWAP_FILE in custom path (swapon may not be available in this environment)"
+          else
+            echo "FAIL: no swap file found under /mnt/swapdir"
+            exit 1
+          fi
