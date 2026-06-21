@@ -8,6 +8,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
+| v1.0.1 | [`v1.0.1`](https://github.com/chainguard-actions/actionhippie-swap-space/tree/v1.0.1) | [`67ab8aa`](https://github.com/actionhippie/swap-space/commit/67ab8aa4f75e57bdca25735ac037511360578e62) |
 | v1.1.0 | [`v1.1.0`](https://github.com/chainguard-actions/actionhippie-swap-space/tree/v1.1.0) | [`0cffa89`](https://github.com/actionhippie/swap-space/commit/0cffa893f224708cfb6b011690d8ba819d69c10f) |
 
 ## Privacy
