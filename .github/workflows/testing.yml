@@ -1,0 +1,36 @@
+---
+name: testing
+
+"on":
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+    tags:
+      - v*
+
+permissions:
+  contents: read
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        id: source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Lint yaml
+        uses: actionhippie/yamllint@42cde5141b45bc5832d61ed19007b5ca0f354753 # v1
+        with:
+          strict: true
+
+      - name: Update version
+        id: version
+        uses: nowactions/update-majorver@f2014bbbba95b635e990ce512c5653bd0f4753fb # v1
+        if: startsWith(github.ref, 'refs/tags/v')
+
+...

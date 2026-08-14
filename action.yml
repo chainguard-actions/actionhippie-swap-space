@@ -43,19 +43,19 @@ runs:
     - name: Create or resize swap space
       shell: bash
       env:
-        SWAP_PATH: ${{ inputs.path }}
-        SWAP_SIZE: ${{ inputs.size }}
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_SIZE: ${{ inputs.size }}
       run: |
         export SWAP_FILE=$(swapon --show=NAME | tail -n 1)
 
         if test -z "${SWAP_FILE}"; then
-            export SWAP_FILE=$(sudo mktemp "$SWAP_PATH"/swap.XXXXXXXXXX)
+            export SWAP_FILE=$(sudo mktemp "${INPUT_PATH}/swap.XXXXXXXXXX")
         else
             sudo swapoff "${SWAP_FILE}"
             sudo rm "${SWAP_FILE}"
         fi
 
-        sudo fallocate -l "$SWAP_SIZE" "${SWAP_FILE}"
+        sudo fallocate -l "${INPUT_SIZE}" "${SWAP_FILE}"
 
         sudo chmod 600 "${SWAP_FILE}"
         sudo mkswap "${SWAP_FILE}"
