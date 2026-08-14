@@ -1,0 +1,45 @@
+---
+name: release
+
+"on":
+  schedule:
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          token: ${{ secrets.BOT_ACCESS_TOKEN }}
+
+      - name: Write buildtime
+        run: date >| .github/RELEASEDATE
+
+      - name: Semantic release
+        uses: cycjimmy/semantic-release-action@8e58d20d0f6c8773181f43eb74d6a05e3099571d # v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOT_ACCESS_TOKEN }}
+        with:
+          extra_plugins: |
+            conventional-changelog-conventionalcommits@6.1.0
+
+      - name: Commit changes
+        uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d5 # v9
+        with:
+          author_name: GitHub Actions
+          author_email: github@webhippie.de
+          add: .github/RELEASEDATE
+          message: "docs: automated release update [skip ci]"
+          push: true
+          commit: --signoff
+
+...

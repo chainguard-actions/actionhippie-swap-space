@@ -1,4 +1,4 @@
-name: Test custom swap path
+name: Test custom swap size
 on:
   workflow_dispatch:
 jobs:
@@ -28,12 +28,11 @@ jobs:
             echo "Swap operations are NOT supported in this environment (container limitation)"
           fi
 
-      - name: Run swap-space action with custom path
+      - name: Run swap-space action with custom size
         if: steps.swap-check.outputs.swap_supported == 'true'
         uses: .
         with:
-          size: 256M
-          path: /tmp/myswapfile
+          size: 512M
 
       - name: Assert swap is active
         if: steps.swap-check.outputs.swap_supported == 'true'
@@ -48,25 +47,18 @@ jobs:
           fi
           echo "PASS: swap is active"
 
-      - name: Assert custom swapfile exists at specified path
+      - name: Assert swapfile size is approximately 512M
         if: steps.swap-check.outputs.swap_supported == 'true'
         run: |
-          if [ ! -f /tmp/myswapfile ]; then
-            echo "FAIL: /tmp/myswapfile does not exist"
+          SIZE=$(stat -c%s /swapfile 2>/dev/null || echo 0)
+          echo "Swapfile size in bytes: $SIZE"
+          # 512M = 536870912 bytes
+          EXPECTED=536870912
+          if [ "$SIZE" -ne "$EXPECTED" ]; then
+            echo "FAIL: expected swapfile size $EXPECTED bytes but got $SIZE"
             exit 1
           fi
-          echo "PASS: /tmp/myswapfile exists"
-
-      - name: Assert custom swapfile is in active swap list
-        if: steps.swap-check.outputs.swap_supported == 'true'
-        run: |
-          NAMES=$(swapon --show=NAME --noheadings 2>/dev/null)
-          echo "Active swap names: $NAMES"
-          if ! echo "$NAMES" | grep -q "/tmp/myswapfile"; then
-            echo "FAIL: /tmp/myswapfile not found in active swap list"
-            exit 1
-          fi
-          echo "PASS: /tmp/myswapfile is active swap"
+          echo "PASS: swapfile is 512M"
 
       - name: Skip notice when swap not supported
         if: steps.swap-check.outputs.swap_supported != 'true'
